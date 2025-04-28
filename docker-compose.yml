@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL — чистая tmpfs-БД на каждой перезагрузке
   postgresql-service:
     image: postgres:17
     container_name: postgresql-service
@@ -11,7 +10,6 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5432:5432"
-    # вместо named volume — tmpfs
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +19,6 @@ services:
       retries: 5
       start_period: 5s
 
-  # Redis Stack — брокер Celery
   redis-stack-server:
     image: redis/redis-stack-server:latest
     container_name: redis-stack-server
@@ -34,7 +31,6 @@ services:
       retries: 5
       start_period: 5s
 
-  # MinIO — S3-совместимое хранилище
   minio-s3-srv:
     image: minio/minio:latest
     container_name: minio-s3-srv
@@ -54,7 +50,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # Django + migrations + статика
   backend-django-main-app-service:
     build:
       context: .
@@ -78,7 +73,6 @@ services:
       "
     restart: on-failure
 
-  # Celery worker — выполняет задачи
   celery-worker:
     image: backend-django-main-app-image:latest
     container_name: celery-worker
@@ -91,7 +85,6 @@ services:
     command: celery -A agro_django worker --loglevel=info --concurrency=4
     restart: always
 
-  # Celery beat — планировщик периодических задач
   celery-beat:
     image: backend-django-main-app-image:latest
     container_name: celery-beat
@@ -104,7 +97,6 @@ services:
     command: celery -A agro_django beat --loglevel=info
     restart: always
 
-  # Flower — веб-интерфейс для мониторинга Celery
   flower:
     image: mher/flower:latest
     container_name: flower
