@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # PostgreSQL — чистая tmpfs-БД на каждой перезагрузке
+  postgresql-service:
+    image: postgres:17
+    container_name: postgresql-service
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgresql_pass
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    # вместо named volume — tmpfs
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Redis Stack — брокер Celery
+  redis-stack-server:
+    image: redis/redis-stack-server:latest
+    container_name: redis-stack-server
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # MinIO — S3-совместимое хранилище
+  minio-s3-srv:
+    image: minio/minio:latest
+    container_name: minio-s3-srv
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio_user
+      MINIO_ROOT_PASSWORD: minio_secret
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Django + migrations + статика
+  backend-django-main-app-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: backend-django-main-app-image:latest
+    container_name: backend-django-main-app-service
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgresql-service:
+        condition: service_healthy
+      redis-stack-server:
+        condition: service_healthy
+      minio-s3-srv:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    restart: on-failure
+
+  # Celery worker — выполняет задачи
+  celery-worker:
+    image: backend-django-main-app-image:latest
+    container_name: celery-worker
+    env_file: .env
+    depends_on:
+      postgresql-service:
+        condition: service_healthy
+      redis-stack-server:
+        condition: service_healthy
+    command: celery -A agro_django worker --loglevel=info --concurrency=4
+    restart: always
+
+  # Celery beat — планировщик периодических задач
+  celery-beat:
+    image: backend-django-main-app-image:latest
+    container_name: celery-beat
+    env_file: .env
+    depends_on:
+      postgresql-service:
+        condition: service_healthy
+      redis-stack-server:
+        condition: service_healthy
+    command: celery -A agro_django beat --loglevel=info
+    restart: always
+
+  # Flower — веб-интерфейс для мониторинга Celery
+  flower:
+    image: mher/flower:latest
+    container_name: flower
+    env_file: .env
+    environment:
+      - CELERY_BROKER_URL=${REDIS_URL}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis-stack-server
+    command: ["celery", "flower", "--broker=${REDIS_URL}", "--port=5555"]
+    restart: always
+
+volumes:
+  pgdata:
+  minio_data:

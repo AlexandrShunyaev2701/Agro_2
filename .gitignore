@@ -1,0 +1,12 @@
+.env
+/.venv
+.venv
+.idea/
+*.iml
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Cache files
+*.egg-info/

@@ -1,0 +1,84 @@
+{# templates/admin/index.html #}
+{% extends 'unfold/layouts/base.html' %}
+{% load i18n unfold %}
+
+{# Здесь обычно убираем хлебные крошки: #}
+{% block breadcrumbs %}{% endblock %}
+
+{# Задаём заголовок страницы: #}
+{% block title %}
+    {% trans "Dashboard" %} | {{ site_title|default:_("Django site admin") }}
+{% endblock %}
+
+{# Основной контент: #}
+{% block content %}
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    {# === Invoices === #}
+    <section>
+      <h2 class="text-2xl font-bold mb-4">{% trans "Invoices" %}</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for card in invoice_cards %}
+          <div class="flex items-center p-6 bg-gradient-to-br from-{{ card.color }}-50 to-white rounded-2xl shadow-md">
+            <div class="p-3 bg-{{ card.color }}-100 rounded-full">
+              {% if card.status == 'PAID' %}
+                <!-- ✔️ -->
+                <svg class="h-6 w-6 text-{{ card.color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              {% elif card.status == 'PENDING' %}
+                <!-- ⏱️ -->
+                <svg class="h-6 w-6 text-{{ card.color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8v4l2 2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                </svg>
+              {% else %}
+                <!-- ❌ -->
+                <svg class="h-6 w-6 text-{{ card.color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 6 L6 18 M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              {% endif %}
+            </div>
+            <div class="ml-4">
+              <dt class="text-sm font-medium text-gray-500">{{ card.status|capfirst }}</dt>
+              <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ card.count }}</dd>
+            </div>
+          </div>
+        {% empty %}
+          <p class="text-gray-400">{% trans "No invoices" %}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    {# === Payment Attempts === #}
+    <section>
+      <h2 class="text-2xl font-bold mb-4">{% trans "Payment Attempts" %}</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for card in attempt_cards %}
+          <div class="flex items-center p-6 bg-gradient-to-br from-{{ card.color }}-50 to-white rounded-2xl shadow-md">
+            <div class="p-3 bg-{{ card.color }}-100 rounded-full">
+              {% if card.status == 'SUCCESS' %}
+                <!-- ✔️ -->
+                <svg class="h-6 w-6 text-{{ card.color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              {% else %}
+                <!-- ❌ -->
+                <svg class="h-6 w-6 text-{{ card.color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 6 L6 18 M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              {% endif %}
+            </div>
+            <div class="ml-4">
+              <dt class="text-sm font-medium text-gray-500">{{ card.status|capfirst }}</dt>
+              <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ card.count }}</dd>
+            </div>
+          </div>
+        {% empty %}
+          <p class="text-gray-400">{% trans "No payment attempts" %}</p>
+        {% endfor %}
+      </div>
+    </section>
+
+  </div>
+{% endblock %}
